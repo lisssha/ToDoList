@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Егор Крид</title>
+    <meta charset="utf-8" />
+    <style>
+
+    </style>
+</head>
+
+<body>
+    <div style="text-align: center;">
+        <h1 style="color: red;">To do list</h1>
+        <button id="btn" style="width: 175px;">Поддержка</button>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        
+        <div style="text-align: left;">
+            <h1>Твои дела-дела</h1>
+            <div>
+                <input type="hidden" id="noteId" />
+                <input type="hidden" id="UserId" />
+                <p>
+                    Задача:<br />
+                    <input id="noteName" />
+                </p>
+                <p>
+                    Время:<br />
+                    <input id="noteTime" />
+                </p>
+                <p>
+                    <button id="saveBtn">Сохранить</button>
+                    <button id="resetBtn">Сбросить</button>
+                </p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Задача</th>
+                        <th>Time</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+        <div style="text-align: right; margin-top: -50x;">
+            <p>
+                Логин:<br />
+                <input id="loginUser" />
+            </p>
+            <p>
+                Пароль:<br />
+                <input id="passwordUser" />
+            </p>
+            <p>
+                <button id="goBtn" style="width: 175px;">Войти</button>
+            </p>
+            <img src="https://masterpiecer-images.s3.yandex.net/cba56322977411eeb1b8b61765e8ab70:upscaled" alt="Пример изображения" width="175" height="175" />
+        </div>
+    </div>
+
+    <script>
+        const btn = document.getElementById("btn");
+        btn.addEventListener("click", () => {
+            alert("Ты зайка и у тебя все получится!!")
+        });
+        //плакать точно буду, здесь темный лес дай бог хоть работать будет
+        //для начала надо получить на страницу все заметки
+        async function getNotes() {
+            const response = await fetch("api/notes", { method: "GET", headers: { "Accept": "application/json" } });
+            if (response.ok === true) {
+                const notes = await response.json();
+                const rows = document.querySelector("tbody");
+                rows.innerHTML = "";
+                notes.forEach(note => rows.append(row(note)));
+            }
+        }
+        //получение одной заметки
+        async function getNote(id) {
+            const response = await fetch(`/api/notes/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const note = await response.json();
+                document.getElementById("noteId").value = note.id;
+                document.getElementById("noteName").value = note.name;
+                document.getElementById("noteTime").value = note.time;
+            }
+            else {
+                // если произошла ошибка, получаем сообщение об ошибке
+                const error = await response.json();
+                console.log(error.message); //консоль
+            }
+        }
+        //добавление заметки такая зайка сразу заработала!!
+        async function createNote(noteName, noteTime) {
+
+            const response = await fetch("api/notes", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: noteName,
+                    time: noteTime
+                })
+            });
+            if (response.ok === true) {
+                const note = await response.json();
+                document.querySelector("tbody").append(row(note));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+        //изменение заметки я хз оно не работате а почему
+        async function editNote(noteId, noteName, noteTime) {
+            const response = await fetch("api/notes", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: Number(noteId),
+                    name: noteName,
+                    time: noteTime
+                })
+            });
+            if (response.ok === true) {
+                const note = await response.json();
+                document.querySelector(`tr[data-rowid='${note.id}']`).replaceWith(row(note));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+        //удаление заметки тоже не робит
+        async function deleteNote(id) {
+            const response = await fetch(`/api/notes/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                //полученный ответ от сервера об удаленной заметке.
+                const note = await response.json();
+                //поиск в элементе тр с нужным атрибутом, который прислал сервер
+                const row = document.querySelector(`tr[data-rowid='${note.id}']`);
+                if (row) {
+                    row.remove();
+                }
+
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        //чистка формы
+        function reset() {
+            document.getElementById("noteId").value =
+                document.getElementById("noteName").value =
+                document.getElementById("noteTime").value = "";
+        }
+        // создание строки для таблицы
+        function row(note) {
+
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", note.id);
+
+            const nameTd = document.createElement("td");
+            nameTd.append(note.name);
+            tr.append(nameTd);
+
+            const timeTd = document.createElement("td");
+            timeTd.append(note.time);
+            tr.append(timeTd);
+
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("button");
+            editLink.append("Изменить");
+            editLink.addEventListener("click", async () => await getNote(note.id));
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("button");
+            removeLink.append("Удалить");
+            removeLink.addEventListener("click", async () => await deleteNote(note.id));
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+        // сброс значений формы
+        document.getElementById("resetBtn").addEventListener("click", () => reset());
+
+        // отправка формы
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+
+            const id = document.getElementById("noteId").value;
+            const name = document.getElementById("noteName").value;
+            const time = document.getElementById("noteTime").value;
+            if (id === "")
+                await createNote(name, time);
+            else
+                await editNote(id, name, time);
+            reset();
+        });
+
+        // загрузка пользователей
+        getNotes();
+
+        const playButton = document.getElementById('playButton');
+        const audio = document.getElementById('audio');
+
+
+        //авторризация
+        async function checkUser(loginUser, passwordUser) {
+            //поменять путь fetch когда создам функцию в серверной части
+            const response = await fetch("/api/user", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    login: loginUser,
+                    password: passwordUser
+                })
+            });
+            //поменять когда создам функцию и пойму что она возврщать будет. скорее всего есть ли такой пользователь или нет.и будет проверка что получила функция
+            if (response.ok === true) {
+                const result = await response.json();
+
+                if (result === false) {
+                    //запрос на имя польхователя. сейчас сделаю
+                    const name = prompt("Введите свое имя:");
+                    if (name !== null && name !== "") {
+                        //надо отправить теперь имя, логин и пароль. тут мб запрос пост??
+                        newUser(name, loginUser, passwordUser)
+                    }
+                    else {
+                        alert("неправильно заполнено поле")
+                    }
+                }
+                else if (result === null) {
+                    //возможно сдлеать проверку ну none, но тогда тоже должно быть уведомление, о том что пользователь черт.кстати можно сделать тоже через alert
+                    alert("незаполнено поле догина или парполя")
+                }
+                else {
+                    //скорее всего ничего и будет происходит, так как функция с сервера просто сразу такая, а у меня это есть и зайдет в пользователя, но мб надо вынести в отдельную функцию
+                    alert("Добро пожаловать, " + result)
+                    await getNotes();
+                }
+
+            }
+        }
+        async function newUser(nameUser, loginUser, passwordUser) {
+            //поменять путь fetch когда создам функцию в серверной части
+            const response = await fetch("/api/newuser", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: nameUser,
+                    login: loginUser,
+                    password: passwordUser
+                })
+            });
+            //поменять когда создам функцию и пойму что она возврщать будет. скорее всего есть ли такой пользователь или нет.и будет проверка что получила функция
+            if (response.ok === true) {
+                //что-то надо ли здесь возвращать. проверка на пустоту имени уже есть
+                checkUser(loginUser, passwordUser)
+            }
+        }
+
+        document.getElementById("goBtn").addEventListener("click", async () => {
+
+            const login = document.getElementById("loginUser").value;
+            const password = document.getElementById("passwordUser").value;
+            await checkUser(login, password)
+            reset_authorization();
+        });
+        function reset_authorization() {
+            document.getElementById("loginUser").value =
+                document.getElementById("passwordUser").value = "";
+        }
+
+    </script>
+</body>
+
+</html>
